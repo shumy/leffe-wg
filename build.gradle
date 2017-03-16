@@ -40,4 +40,5 @@ bundle {
 
 runOsgi {
   bundles += [ project ]
+  outDir = '../runtime'
 }

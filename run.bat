@@ -14,5 +14,5 @@ if exist "%JAVA_HOME%/bin/java" (
   )
 )
 
-cd ./build/osgi
-%JAVA%  -cp system-libs/org.apache.felix.main-5.4.0.jar org.apache.felix.main.Main  %*
+cd ./runtime
+%JAVA% -Dorg.ops4j.pax.logging.DefaultServiceLog.level=INFO -Dio.netty.processId=$$ -cp system-libs/org.apache.felix.main-5.4.0.jar org.apache.felix.main.Main  %*

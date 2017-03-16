@@ -15,7 +15,7 @@ class LeffeVerticle extends AbstractVerticle {
   override def start() {
     val options = new HttpServerOptions => [
       tcpKeepAlive = true
-      logActivity = true
+      //logActivity = true
     ]
     
     val server = vertx.createHttpServer(options)

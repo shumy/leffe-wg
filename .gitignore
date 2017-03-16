@@ -4,4 +4,8 @@
 .project
 build/
 bin/
-felix-cache/
+runtime/felix-cache/
+runtime/system-libs/
+runtime/bundle/**/*.jar
+runtime/run.bat
+runtime/run.sh
