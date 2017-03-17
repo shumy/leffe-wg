@@ -10,7 +10,7 @@ version '1.0'
 
 sourceCompatibility = 1.8
 
-defaultTasks 'createOsgiRuntime'
+defaultTasks 'createBundlesDir'
 repositories.mavenCentral()
 
 jar {

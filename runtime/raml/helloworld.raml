@@ -1,0 +1,35 @@
+#%RAML 1.0
+title: Hello world
+version: v1
+protocols: [ HTTP ] 
+baseUri: /api
+mediaType: application/json
+
+types:
+  Hello:
+    description: Hello response
+    properties:
+      message: string
+
+/{id}:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            type: Hello
+
+/helloworld:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            type: Hello
+  /{name}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: Hello

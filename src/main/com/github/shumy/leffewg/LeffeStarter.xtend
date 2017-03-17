@@ -14,7 +14,6 @@ class LeffeStarter {
   
   @Activate
   def void start() {
-    println("Activate leffe-wg...")
     System.setProperty("vertx.disableDnsResolver", "true")
     
     this.vertx = Vertx.vertx
@@ -25,7 +24,6 @@ class LeffeStarter {
 
   @Deactivate
   def void stop() {
-    println("Deactivate leffe-wg...")
     vertx.close
   }
 }

@@ -1,9 +1,12 @@
 package com.github.shumy.leffewg
 
+import com.github.shumy.leffewg.raml.RamlReader
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpServer
 import io.vertx.core.http.HttpServerOptions
+import io.vertx.ext.web.Router
 import org.slf4j.LoggerFactory
+import com.github.shumy.leffewg.raml.RamlParamTransform
 
 class LeffeVerticle extends AbstractVerticle {
   static val logger = LoggerFactory.getLogger(LeffeVerticle)
@@ -16,18 +19,14 @@ class LeffeVerticle extends AbstractVerticle {
       logActivity = true
     ]
     
-    server = vertx.createHttpServer(options)
-    server.requestHandler[
-      println('Hello world')
-      response.statusCode = 200
-      response
-        .putHeader("content-type", "text/html")
-        .end("<html><body><h1>Hello from vert.x!</h1></body></html>")
+    val router = configRouter()
+    server = vertx.createHttpServer(options).requestHandler[
+      router.accept(it) //forward request to router...
     ]
     
     server.listen(9191)[
       if (succeeded) {
-        logger.info("Server is now listening on port 9191.")
+        logger.info("LEEFE - Web Gateway (9191)")
       } else {
         logger.error("Fail to bind on port 9191: ")
         cause.printStackTrace
@@ -37,5 +36,24 @@ class LeffeVerticle extends AbstractVerticle {
   
   override def stop() {
     server.close
+  }
+  
+  private def Router configRouter() {
+    val mainRouter = Router.router(vertx)
+    RamlReader.readAll.forEach[ api |
+      logger.info("ADD-SubRouter -> {}", api.baseUri.value)
+      val router = Router.router(vertx)
+      api.resources.forEach[ resource |
+        val path = RamlParamTransform.transform(resource.resourcePath)
+        logger.info("ADD-Route -> {}", path)
+        router.route(resource.resourcePath).handler[
+          response.end('''{ "message": "Hello", "path": «path» }''')
+        ]
+      ]
+      
+      mainRouter.mountSubRouter(api.baseUri.value, router)
+    ]
+    
+    return mainRouter
   }
 }
