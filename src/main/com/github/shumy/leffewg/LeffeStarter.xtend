@@ -18,7 +18,7 @@ class LeffeStarter {
     System.setProperty("vertx.disableDnsResolver", "true")
     
     this.vertx = Vertx.vertx
-    verticles.add(new LeffeVerticle(vertx))
+    verticles.add(new LeffeVerticle)
     
     verticles.forEach[ vertx.deployVerticle(it) ]
   }
