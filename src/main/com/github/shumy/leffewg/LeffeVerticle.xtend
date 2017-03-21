@@ -1,17 +1,17 @@
 package com.github.shumy.leffewg
 
-import com.github.shumy.leffewg.raml.RamlPathTransform
-import com.github.shumy.leffewg.raml.RamlReader
+import com.github.shumy.leffewg.plugin.PluginProvider
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpServer
 import io.vertx.core.http.HttpServerOptions
-import io.vertx.ext.web.Router
+import org.eclipse.xtend.lib.annotations.FinalFieldsConstructor
 import org.slf4j.LoggerFactory
-import io.vertx.core.http.HttpMethod
 
+@FinalFieldsConstructor
 class LeffeVerticle extends AbstractVerticle {
   static val logger = LoggerFactory.getLogger(LeffeVerticle)
   
+  val PluginProvider provider
   var HttpServer server
   
   override def start() {
@@ -20,9 +20,18 @@ class LeffeVerticle extends AbstractVerticle {
       logActivity = true
     ]
     
-    val router = configRouter()
     server = vertx.createHttpServer(options).requestHandler[
-      router.accept(it) //forward request to router...
+      println('REQUEST: ' + uri)
+      val routers = provider.routers.filter[ path, router | uri.startsWith(path) ]
+      if (routers.empty) {
+        response.statusCode = 404
+        response.end('No route found!')
+        return
+      }
+      
+      routers.forEach[ path, router |
+        router.accept(it)
+      ]
     ]
     
     server.listen(9191)[
@@ -37,42 +46,5 @@ class LeffeVerticle extends AbstractVerticle {
   
   override def stop() {
     server.close
-  }
-  
-  private def Router configRouter() {
-    val mainRouter = Router.router(vertx)
-    RamlReader.readAll.forEach[ api |
-      logger.info("ADD-SubRouter -> {}", api.baseUri.value)
-      val router = Router.router(vertx)
-      api.resources.forEach[ resource |
-        val path = RamlPathTransform.toSimpleRest(resource.resourcePath)
-        resource.methods.forEach[ meth |
-        	val method = meth.method.methodfromString
-	        logger.info("ADD-Route -> {} {}", method, path)
-	        router.route(method, path).handler[
-	          response.end('''{ "message": "Hello", "path": «path» }''')
-	        ]	
-        ]
-      ]
-      
-      mainRouter.mountSubRouter(api.baseUri.value, router)
-    ]
-    
-    return mainRouter
-  }
-  
-  private def HttpMethod methodfromString(String method) {
-  	switch method.toUpperCase {
-  		case "GET": HttpMethod.GET
-  		case "POST": HttpMethod.POST
-  		case "PUT": HttpMethod.PUT
-  		case "PATCH": HttpMethod.PATCH
-  		case "DELETE": HttpMethod.DELETE
-  		case "OPTIONS": HttpMethod.OPTIONS
-  		case "HEAD": HttpMethod.HEAD
-  		case "TRACE": HttpMethod.TRACE
-  		case "CONNECT": HttpMethod.CONNECT
-  		case "OTHER": HttpMethod.OTHER
-  	}
   }
 }

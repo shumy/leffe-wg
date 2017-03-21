@@ -1,25 +1,33 @@
 package com.github.shumy.leffewg
 
-import io.vertx.core.AbstractVerticle
+import com.github.shumy.leffewg.plugin.IPlugin
+import com.github.shumy.leffewg.plugin.PluginProvider
 import io.vertx.core.Vertx
-import java.util.LinkedList
+import java.util.List
+import java.util.concurrent.CopyOnWriteArrayList
 import org.osgi.service.component.annotations.Activate
 import org.osgi.service.component.annotations.Component
 import org.osgi.service.component.annotations.Deactivate
+import org.osgi.service.component.annotations.Reference
 
 @Component
 class LeffeStarter {
   var Vertx vertx
-  val verticles = new LinkedList<AbstractVerticle>
+  
+  @Reference(policy=DYNAMIC, bind="bind", unbind="unbind")
+  val List<IPlugin> plugins = new CopyOnWriteArrayList<IPlugin>
+  val PluginProvider provider = new PluginProvider(plugins, Vertx.vertx).init
+  
+  def void bind(IPlugin plugin) { provider.bind(plugin) }
+  def void unbind(IPlugin plugin) { provider.unbind(plugin.name) }
   
   @Activate
   def void start() {
+    this.vertx = Vertx.vertx
     System.setProperty("vertx.disableDnsResolver", "true")
     
-    this.vertx = Vertx.vertx
-    verticles.add(new LeffeVerticle)
-    
-    verticles.forEach[ vertx.deployVerticle(it) ]
+    //TODO: deploy X verticles per CPU core?
+    vertx.deployVerticle(new LeffeVerticle(provider))
   }
 
   @Deactivate

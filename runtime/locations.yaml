@@ -1,0 +1,18 @@
+#  location format:
+#  <name>:
+#    description: <some descriptions for the location>
+#    plugin: <plugin to process configs>
+#    config: <yaml, raml or other config file for the plugin>
+#    group?: <user-group that can update the location config>
+
+
+local1:
+  description: Just a description for location 1
+  uri: /api
+  plugin: raml-proxy
+  config: helloworld.raml
+
+local2:
+  description: Just a description for location 2
+  plugin: raml-proxy
+  #config: other.raml
