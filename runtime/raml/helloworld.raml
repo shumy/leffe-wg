@@ -2,8 +2,10 @@
 title: Hello world
 version: v1
 protocols: [ HTTP ]
-baseUri: /api
 mediaType: application/json
+
+uses:
+  proxy: lib/raml-proxy.raml
 
 types:
   Hello:
@@ -12,15 +14,8 @@ types:
       message: string
       path: string
 
-/{id}:
-  get:
-    responses:
-      200:
-        body:
-          application/json:
-            type: Hello
-
 /helloworld:
+  (proxy.ProxyPass): http://www.google.pt
   get:
     responses:
       200:
@@ -34,3 +29,12 @@ types:
           body:
             application/json:
               type: Hello
+
+/{id}:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            type: Hello
+              

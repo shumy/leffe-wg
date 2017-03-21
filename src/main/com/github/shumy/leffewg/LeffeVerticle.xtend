@@ -1,17 +1,17 @@
 package com.github.shumy.leffewg
 
-import com.github.shumy.leffewg.plugin.PluginProvider
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpServer
 import io.vertx.core.http.HttpServerOptions
 import org.eclipse.xtend.lib.annotations.FinalFieldsConstructor
 import org.slf4j.LoggerFactory
+import com.github.shumy.leffewg.plugin.RouteProvider
 
 @FinalFieldsConstructor
 class LeffeVerticle extends AbstractVerticle {
   static val logger = LoggerFactory.getLogger(LeffeVerticle)
   
-  val PluginProvider provider
+  val RouteProvider provider
   var HttpServer server
   
   override def start() {
@@ -21,17 +21,8 @@ class LeffeVerticle extends AbstractVerticle {
     ]
     
     server = vertx.createHttpServer(options).requestHandler[
-      println('REQUEST: ' + uri)
-      val routers = provider.routers.filter[ path, router | uri.startsWith(path) ]
-      if (routers.empty) {
-        response.statusCode = 404
-        response.end('No route found!')
-        return
-      }
-      
-      routers.forEach[ path, router |
-        router.accept(it)
-      ]
+      logger.debug("REQUEST: {} {}", method, uri)
+      provider.route(it)
     ]
     
     server.listen(9191)[

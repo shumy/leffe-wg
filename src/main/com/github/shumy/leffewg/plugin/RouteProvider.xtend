@@ -1,35 +1,36 @@
 package com.github.shumy.leffewg.plugin
 
 import io.vertx.core.Vertx
+import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.Router
 import java.io.FileInputStream
 import java.util.Collections
 import java.util.List
 import java.util.Map
 import java.util.concurrent.ConcurrentHashMap
-import org.eclipse.xtend.lib.annotations.Accessors
 import org.eclipse.xtend.lib.annotations.FinalFieldsConstructor
 import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 
 @FinalFieldsConstructor
-class PluginProvider {
-  static val logger = LoggerFactory.getLogger(PluginProvider)
+class RouteProvider {
+  static val logger = LoggerFactory.getLogger(RouteProvider)
   
-  val List<IPlugin> plugins
+  val List<IRouterPlugin> plugins
   
   val Vertx vertx //used also to synchronize locations
   var List<Location> locations = Collections.EMPTY_LIST
   
-  @Accessors val routers = new ConcurrentHashMap<String, Router>        //<uri-from-location, Router>
+  //<uri-from-location, Router>
+  val routers = new ConcurrentHashMap<String, Router>
   
-  def PluginProvider init() {
+  def RouteProvider init() {
     //TODO: check for locations updates!
     readLocations
     return this
   }
   
-  def void bind(IPlugin plugin) {
+  def void bind(IRouterPlugin plugin) {
     logger.info("Plugin bind: {}", plugin.name)
     locations.forEach[ loc |
       if (loc.plugin == plugin.name) {
@@ -39,7 +40,9 @@ class PluginProvider {
           rt
         }
         
-        plugin.config(loc, router)
+        synchronized(router) {
+          plugin.config(loc, router)
+        }
       }
     ]
   }
@@ -47,6 +50,17 @@ class PluginProvider {
   def void unbind(String name) {
     logger.info("Plugin unbind: {}", name)
     //TODO: remove all routes of the plugin
+  }
+  
+  def void route(HttpServerRequest request) {
+    val path = routers.keySet.findFirst[ request.uri.startsWith(it) ]
+    if (path === null) {
+      request.response.statusCode = 404
+      request.response.end('No route found!')
+      return
+    }
+    
+    routers.get(path).accept(request)
   }
   
   def void readLocations() {
