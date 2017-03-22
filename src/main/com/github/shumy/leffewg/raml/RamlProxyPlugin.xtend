@@ -22,12 +22,12 @@ class RamlProxyPlugin implements IRouterPlugin {
   @Accessors val String name = "raml-proxy"
   @Reference Vertx vertx
   
-  override config(Location location, Router router) {
+  override config(Location location) {
     println('raml-proxy-config: ' + location.name)
     
     val api = RamlReader.readConfig(location.config)
     val client = vertx.createHttpClient(new HttpClientOptions)
-    api.resources.forEach[ configResource(location.uri, router, client) ]
+    api.resources.forEach[ configResource(location.uri, location.router, client) ]
   }
   
   def void configResource(Resource resource, String baseUri, Router router, HttpClient client) {
@@ -55,16 +55,16 @@ class RamlProxyPlugin implements IRouterPlugin {
     val pURL = to.decodeProxyURL
     
     router.route(from).handler[ ctx |
-      println('''Proxy-Request «from» -> «to»''')
-      ctx.request.headers.forEach[
+      logger.debug("Proxy-Request {} -> {}", from, to)
+      /*ctx.request.headers.forEach[
         println('''  «key»: «value»''')
-      ]
+      ]*/
       
       val cRequest = client.request(ctx.request.method, pURL.port, pURL.host, pURL.uri)[ cResponse |
-        println('''Proxy-Response «to» -> «cResponse.statusCode»''')
-        cResponse.headers.forEach[
+        logger.debug('Proxy-Response {} -> {}', to, cResponse.statusCode)
+        /*cResponse.headers.forEach[
           println('''  «key»: «value»''')
-        ]
+        ]*/
         
         ctx.response => [
           chunked = true
@@ -76,6 +76,7 @@ class RamlProxyPlugin implements IRouterPlugin {
         //transmit response data until end...
         Pump.pump(cResponse, ctx.response).start
         cResponse.endHandler[ ctx.response.end ]
+        cResponse.exceptionHandler[ logger.error("Proxy-Response-Error {}", message) ]
       ]
       
       cRequest => [
@@ -87,6 +88,7 @@ class RamlProxyPlugin implements IRouterPlugin {
       //transmit request data until end...
       Pump.pump(ctx.request, cRequest).start
       ctx.request.endHandler[ cRequest.end ]
+      ctx.request.exceptionHandler[ logger.error("Proxy-Request-Error {}", message) ]
     ]
   }
   
@@ -105,16 +107,7 @@ class RamlProxyPlugin implements IRouterPlugin {
     }
     
     val uri = if (url.path == "") "/" else url.path
-    
-    /*println('''
-      Proxy «pURL» :
-        scheme: «scheme»
-        host:   «host»
-        port:   «port»
-        uri:    «uri»
-    ''')*/
-    
-    new ProxyURL(scheme, host, port, uri, host + ":" + port)
+    return new ProxyURL(scheme, host, port, uri, host + ":" + port)
   }
 }
 

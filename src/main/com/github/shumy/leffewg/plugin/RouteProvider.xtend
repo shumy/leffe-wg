@@ -7,7 +7,6 @@ import java.io.FileInputStream
 import java.util.Collections
 import java.util.List
 import java.util.Map
-import java.util.concurrent.ConcurrentHashMap
 import org.eclipse.xtend.lib.annotations.FinalFieldsConstructor
 import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
@@ -21,9 +20,6 @@ class RouteProvider {
   val Vertx vertx //used also to synchronize locations
   var List<Location> locations = Collections.EMPTY_LIST
   
-  //<uri-from-location, Router>
-  val routers = new ConcurrentHashMap<String, Router>
-  
   def RouteProvider init() {
     //TODO: check for locations updates!
     readLocations
@@ -34,14 +30,8 @@ class RouteProvider {
     logger.info("Plugin bind: {}", plugin.name)
     locations.forEach[ loc |
       if (loc.plugin == plugin.name) {
-        val router = routers.get(loc.uri) ?: {
-          val rt = Router.router(vertx)
-          routers.put(loc.uri, rt)
-          rt
-        }
-        
-        synchronized(router) {
-          plugin.config(loc, router)
+        synchronized(loc) {
+          plugin.config(loc)
         }
       }
     ]
@@ -49,18 +39,25 @@ class RouteProvider {
   
   def void unbind(String name) {
     logger.info("Plugin unbind: {}", name)
-    //TODO: remove all routes of the plugin
+    
+    //TODO: how to remove plugin routes of the router location?
+    locations.forEach[ loc |
+      println('''location «loc.uri»''')
+      loc.router.routes.forEach[
+        println('''  route «path»''')
+      ]
+    ]
   }
   
   def void route(HttpServerRequest request) {
-    val path = routers.keySet.findFirst[ request.uri.startsWith(it) ]
-    if (path === null) {
+    val loc = locations.findFirst[ request.uri.startsWith(uri) ]
+    if (loc === null) {
       request.response.statusCode = 404
       request.response.end('No route found!')
       return
     }
     
-    routers.get(path).accept(request)
+    loc.router.accept(request)
   }
   
   def void readLocations() {
@@ -70,7 +67,7 @@ class RouteProvider {
       
       locations = data.keySet.map[
         val map = data.get(it) as Map<String, String>
-        new Location(it, map.get('description'), map.get('plugin'), map.get('uri'), map.get('config'))
+        new Location(it, map.get('description'), map.get('plugin'), map.get('uri'), map.get('config'), Router.router(vertx))
       ].filter[ loc |
         //filter all invalid locations!
         if (loc.name === null || loc.description === null || loc.uri === null || loc.plugin === null || loc.config === null) {
